@@ -1,7 +1,6 @@
 ---
 title: "Homework 5"
 author: "Chong Li"
-date: "11/18/2020"
 output: github_document
 ---
 
@@ -73,5 +72,34 @@ all_prop %>%
 
 
 ```
+# Problem 2
 
+```{r}
+# create a data frame that consists of all subjects and respective observations
+study_df = 
+  tibble(file_name = list.files("data")) %>%
+  mutate(
+    data = map(.x = str_c("./data/", file_name), ~read_csv(.x))
+  ) %>%
+  unnest(data) %>%
+  pivot_longer(
+    week_1:week_8,
+    names_to = "week",
+    values_to = "observations"
+  ) %>%
+  mutate(
+    arm_id = substr(file_name, 0, 3),group_id = substr(file_name, 5, 6)) %>%
+  mutate(
+      group_id = as.numeric(group_id),
+      arm_id = case_when(
+        arm_id == "con" ~ "control",
+        arm_id == "exp" ~ "experiment"
+      ),
+      week = as.numeric(substr(week,6,6))
+  ) %>%
+  relocate(group_id,.before=week)%>%
+  relocate(arm_id,.before=week) %>%
+  select(-file_name)
 
+study_df %>% kable()
+```
