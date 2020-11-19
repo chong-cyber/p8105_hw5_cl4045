@@ -102,6 +102,7 @@ study_df %>%
 From the graph, it is clear that the experimental group shows a strong positive trend over the 8-week observation period while the control group had a flat trend despite having fairly large fluctuation in observation values.
 
 # Problem 3
+## Part 1
 ```{r}
 # function used to conduct t.test given the fixed n and fixed sigma at 30 and 5
 hypothesis_fun = function(sample_size=30,mu_input,sigma=5) {
@@ -126,41 +127,66 @@ sim_results = function(x) {
 result_zero = sim_results(0)
 head(result_zero) %>% kable()
 ```
+
+## Part 2
 ```{r}
 # function used to summarize the results of the simulation (rejection propotions/mu_hat)
 summary_fun = function(x){
   x %>%
-    mutate(
-      decision = case_when(
-        p.value < 0.05 ~ "rejected",
-        p.value >= 0.05 ~ "not rejected"
-        )
-    ) %>%
     summarize(
-      reject_null = sum(decision == "rejected"),
+      reject_null = sum(p.value < 0.05),
       reject_prop = reject_null/5000,
       est_mean = mean(estimate)
   )
 }
 
-# run the simulation for all fo mu values 0:6 and calculate the rejections and estimated mean
+# run the simulation for all fo mu values 0:6 
 result_total =
  tibble(mu = 0:6,
-         t_test = map(.x = mu, ~sim_results(.x))) %>%
+         t_test = map(.x = mu, ~sim_results(.x)))
+
+# calculate the proportions of rejection and average mean
+result_total_sum = result_total %>%
   mutate(
     summary_list = map(.x=t_test,~summary_fun(.x))
   ) %>%
   unnest(summary_list)
 ```
 
-## Graph 1
+## Part 3  
+### Graph 1
 ```{r}
-result_total %>%
+result_total_sum %>%
   ggplot(aes(x = mu, y = reject_prop)) +
   geom_smooth(se = FALSE) +
   ylab("Null Hypothesis Rejected Proportions") + xlab("True Value of μ") + ggtitle("Power vs. Mean")
-
-
 ```
 The graph shows that as the true value of μ increases, the power of the test (rejection proportion) also increases.The rate of increase of power of the test decreases overtime as the graph concaves down.
+
+### Graph 2
+```{r}
+filter_sum = function(x){
+   x%>%
+    filter(p.value < 0.05) %>%
+    summarize(
+      est_mean_fil = mean(estimate))
+}
+
+result_total_fil = result_total %>%
+  mutate(
+    summary_list = map(.x=t_test,~filter_sum(.x))
+  ) %>%
+  unnest(summary_list)
+
+result_total_sum %>%
+  ggplot(aes(x = mu, y = est_mean)) + geom_point() + geom_line() + 
+  ylab("Mean value of μ hat") + xlab("True Value of μ") + ggtitle("True μ vs. mean μ hat")
+
+result_total_fil %>%
+  ggplot(aes(x = mu, y = est_mean_fil)) + geom_point(aes(color="red")) + geom_line(aes(color="red")) +
+  ylab("Mean value of μ hat (after filter") + xlab("True Value of μ") + ggtitle("True μ vs. mean μ hat (after filter)")
+
+```
+By comparing the two graphs, we can see that sample average of μ hat across tests are not approximately equal to true μ. However, as the true μ increases, the gap between the two gets narrower. The reason behind this phenomenon is because when the true μ is close to 0, there are only a small percentage of null hypotheses rejected. Therefore, due to the central limit theorem, a small sample size leads to significant divergence from the true μ.
+
 
