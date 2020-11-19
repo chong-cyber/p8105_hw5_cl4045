@@ -1,0 +1,77 @@
+---
+title: "Homework 5"
+author: "Chong Li"
+date: "11/18/2020"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+library(readxl)
+library(tidyverse)
+library(dplyr)
+library(knitr)
+```
+
+# Problem 1
+The raw data describes the victim characteristics of murder cases (name/race/age/sex), the location where the murders took place (state/city/lat/lon), the identifiers of the cases and the reported date, and lastly, the disposition of the case (close or open/arrest or no arrest)
+```{r}
+# Read in the csv file and add the city_state variable, as well as variable for open/no arrest
+homicide_df = read.csv("./homicide-data.csv") %>%
+  janitor::clean_names() %>%
+  mutate(city_state = str_c(city,state,sep=",")) %>% 
+  relocate(city_state, .before=lat)  %>%
+  mutate(unsolved = (grepl("Closed without arrest",disposition,ignore.case=TRUE) |
+                       grepl("Open/No arrest",disposition,ignore.case=TRUE)))
+
+head(homicide_df) %>% kable()
+
+# count the total number of murder cases as well as unsolved murder cases
+cases_df = homicide_df %>%
+  count(city_state,name = "cases")
+
+unsolved_df = homicide_df %>%
+  filter(unsolved == TRUE) %>%
+  count(city_state,name = "unsolved_cases")
+
+sum_df = merge(cases_df,unsolved_df,by.x="city_state",by.y="city_state")
+
+head(sum_df) %>% kable()
+
+# for the city of Baltimore, use prop.test function to estimate unsolved cases
+baltimore = sum_df %>% filter(city_state=="Baltimore,MD")
+baltimore_prop = prop.test(baltimore$unsolved_cases,baltimore$cases) %>% 
+  broom::tidy() %>% 
+  select(estimate,conf.low,conf.high)
+
+signif(baltimore_prop,3) %>% kable()
+
+# run prop.test for each cities in the dataset
+all_prop = sum_df %>%
+  mutate(
+    prop_test = map2(.x = unsolved_cases, .y = cases, ~prop.test(.x,.y)),
+    prop_test_tidy = map(.x = prop_test, ~broom::tidy(.x))
+  ) %>%
+  select(city_state,prop_test_tidy) %>%
+  unnest(prop_test_tidy) %>%
+  arrange(desc(estimate)) %>%
+  select(city_state,estimate,conf.low,conf.high) %>%
+  mutate(across(is.numeric, ~ round(., 4)))
+
+head(all_prop) %>% kable()
+
+# create a graph based on the prop.test outputs above
+
+all_prop %>%
+  mutate(city_state = fct_reorder(city_state, estimate)) %>%
+  ggplot(aes(x = city_state, y = estimate)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  ggtitle("Proportion of Unsolved Murder Cases") +
+  xlab("City") + ylab("Proportion Estimates")
+
+
+```
+
+
