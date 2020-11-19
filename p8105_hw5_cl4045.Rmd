@@ -79,23 +79,15 @@ all_prop %>%
 study_df = 
   tibble(file_name = list.files("data")) %>%
   mutate(
-    data = map(.x = str_c("./data/", file_name), ~read_csv(.x))
-  ) %>%
+    data = map(.x = str_c("./data/", file_name), ~read_csv(.x))) %>%
   unnest(data) %>%
   pivot_longer(
-    week_1:week_8,
-    names_to = "week",
-    values_to = "observations"
-  ) %>%
+    week_1:week_8,names_to = "week",values_to = "observations") %>%
   mutate(
     arm_id = substr(file_name, 0, 3),group_id = substr(file_name, 5, 6)) %>%
   mutate(
-      arm_id = case_when(
-        arm_id == "con" ~ "control",
-        arm_id == "exp" ~ "experiment"
-      ),
-      week = substr(week,6,6)
-  ) %>%
+      arm_id = case_when(arm_id == "con" ~ "control",arm_id == "exp" ~ "experiment"),
+      week = substr(week,6,6)) %>%
   relocate(group_id,.before=week)%>%
   relocate(arm_id,.before=week) %>%
   select(-file_name)
@@ -105,9 +97,44 @@ study_df %>%
   ggplot(aes(x = week, y = observations, group = group_id, color = group_id)) +
   geom_line() + facet_grid(~arm_id) +
   ylab("Observations") + xlab("Week") 
-
 ```
   
-From the graph, it is clear that the experimental group shows a strong positive trend over the 8-week observation period while the control group had a flat trend despite having fairly large flutuation in observation values.
+From the graph, it is clear that the experimental group shows a strong positive trend over the 8-week observation period while the control group had a flat trend despite having fairly large fluctuation in observation values.
+
+# Problem 3
+```{r}
+# function used to conduct t.test given the fixed n and fixed sigma
+sim_pval = function(mu_input) {
+  sim_data  = 
+    tibble(
+      x = rnorm(n = 30, mean = mu_input, sd = 5)
+    ) %>%
+    t.test(alternative="two.sided",mu=0) %>% 
+    broom::tidy() %>%
+    mutate(
+      decision = as.factor(case_when(
+        p.value <= 0.05 ~ "reject",
+        p.value > 0.05 ~ "!reject"
+      ))) %>%
+    select(estimate, p.value, decision)
+}
+
+# writing the simulation function
+sim_results = function(x){
+  rerun(5000,sim_pval(mu=x)) %>%
+  bind_rows()
+}
+
+set.seed(1984)
+
+# conduct the simulation with mu at 0
+sim_results(0)
+
+# conduct the simulation with mu from 0:6
+all_result_df = 
+  tibble(mu = 0:6,
+         t_test = map(.x = mu, ~sim_results(.x))
+  )
 
 
+```
