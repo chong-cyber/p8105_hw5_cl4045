@@ -72,8 +72,8 @@ all_prop %>%
 
 
 ```
+  
 # Problem 2
-
 ```{r}
 # create a data frame that consists of all subjects and respective observations
 study_df = 
@@ -90,16 +90,24 @@ study_df =
   mutate(
     arm_id = substr(file_name, 0, 3),group_id = substr(file_name, 5, 6)) %>%
   mutate(
-      group_id = as.numeric(group_id),
       arm_id = case_when(
         arm_id == "con" ~ "control",
         arm_id == "exp" ~ "experiment"
       ),
-      week = as.numeric(substr(week,6,6))
+      week = substr(week,6,6)
   ) %>%
   relocate(group_id,.before=week)%>%
   relocate(arm_id,.before=week) %>%
   select(-file_name)
 
-study_df %>% kable()
+# create a spaghetti plot showing observations on each subject
+study_df %>%
+  ggplot(aes(x = week, y = observations, group = group_id, color = group_id)) +
+  geom_line() + facet_grid(~arm_id) +
+  ylab("Observations") + xlab("Week") 
+
 ```
+  
+From the graph, it is clear that the experimental group shows a strong positive trend over the 8-week observation period while the control group had a flat trend despite having fairly large flutuation in observation values.
+
+
