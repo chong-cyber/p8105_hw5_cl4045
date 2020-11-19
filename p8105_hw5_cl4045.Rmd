@@ -10,6 +10,7 @@ library(readxl)
 library(tidyverse)
 library(dplyr)
 library(knitr)
+library(patchwork)
 ```
 
 # Problem 1
@@ -161,6 +162,7 @@ result_total_sum %>%
   geom_smooth(se = FALSE) +
   ylab("Null Hypothesis Rejected Proportions") + xlab("True Value of μ") + ggtitle("Power vs. Mean")
 ```
+  
 The graph shows that as the true value of μ increases, the power of the test (rejection proportion) also increases.The rate of increase of power of the test decreases overtime as the graph concaves down.
 
 ### Graph 2
@@ -178,15 +180,17 @@ result_total_fil = result_total %>%
   ) %>%
   unnest(summary_list)
 
-result_total_sum %>%
+graph1 = result_total_sum %>%
   ggplot(aes(x = mu, y = est_mean)) + geom_point() + geom_line() + 
   ylab("Mean value of μ hat") + xlab("True Value of μ") + ggtitle("True μ vs. mean μ hat")
 
-result_total_fil %>%
+graph2 = result_total_fil %>%
   ggplot(aes(x = mu, y = est_mean_fil)) + geom_point(aes(color="red")) + geom_line(aes(color="red")) +
   ylab("Mean value of μ hat (after filter") + xlab("True Value of μ") + ggtitle("True μ vs. mean μ hat (after filter)")
 
+graph1+graph2
 ```
+  
 By comparing the two graphs, we can see that sample average of μ hat across tests are not approximately equal to true μ. However, as the true μ increases, the gap between the two gets narrower. The reason behind this phenomenon is because when the true μ is close to 0, there are only a small percentage of null hypotheses rejected. Therefore, due to the central limit theorem, a small sample size leads to significant divergence from the true μ.
 
 
