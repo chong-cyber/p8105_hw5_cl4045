@@ -116,15 +116,51 @@ hypothesis_fun = function(sample_size=30,mu_input,sigma=5) {
     select(estimate,p.value)
 }
 
-# generate 5000 data sets from the model and use the function
-output = vector("list", length = 5000)
+# function used to re-run the simulation 5000 times
+sim_results = function(x) { 
+  rerun(5000, hypothesis_fun(mu_input = x)) %>% 
+  bind_rows()
+}
 
-for (i in 1:5000){
-  output[[i]] = hypothesis_fun(mu_input = 0)
-} 
-
-result_zero = bind_rows(output)
+# result for 5000 datasets with mu = 0
+result_zero = sim_results(0)
 head(result_zero) %>% kable()
+```
+```{r}
+# function used to summarize the results of the simulation (rejection propotions/mu_hat)
+summary_fun = function(x){
+  x %>%
+    mutate(
+      decision = case_when(
+        p.value < 0.05 ~ "rejected",
+        p.value >= 0.05 ~ "not rejected"
+        )
+    ) %>%
+    summarize(
+      reject_null = sum(decision == "rejected"),
+      reject_prop = reject_null/5000,
+      est_mean = mean(estimate)
+  )
+}
+
+# run the simulation for all fo mu values 0:6 and calculate the rejections and estimated mean
+result_total =
+ tibble(mu = 0:6,
+         t_test = map(.x = mu, ~sim_results(.x))) %>%
+  mutate(
+    summary_list = map(.x=t_test,~summary_fun(.x))
+  ) %>%
+  unnest(summary_list)
+```
+
+## Graph 1
+```{r}
+result_total %>%
+  ggplot(aes(x = mu, y = reject_prop)) +
+  geom_smooth(se = FALSE) +
+  ylab("Null Hypothesis Rejected Proportions") + xlab("True Value of μ") + ggtitle("Power vs. Mean")
+
 
 ```
+The graph shows that as the true value of μ increases, the power of the test (rejection proportion) also increases.The rate of increase of power of the test decreases overtime as the graph concaves down.
 
